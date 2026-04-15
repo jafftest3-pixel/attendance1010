@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page-header glass">
+  <div>
+    <h2>Attendance Management System</h2>
+    <p>Use this system to manage shifts, attendance, and reports.</p>
+  </div>
+</section>
+
+<section class="panel-grid">
+  <article class="panel glass">
+    <h3>Employee Shift</h3>
+    <p>Create and import employee shifts.</p>
+    <a class="btn" href="{{ url_for('shifts') }}">Open Employee Shift</a>
+  </article>
+
+  <article class="panel glass">
+    <h3>Attendance</h3>
+    <p>Track employee check-in and check-out records.</p>
+    <a class="btn" href="{{ url_for('attendance') }}">Open Attendance</a>
+  </article>
+
+  <article class="panel glass">
+    <h3>Riders Shifts</h3>
+    <p>Maintain rider schedules and zone assignments.</p>
+    <a class="btn" href="{{ url_for('riders_shifts') }}">Open Riders Shifts</a>
+  </article>
+
+  <article class="panel glass">
+    <h3>Driver Attendance</h3>
+    <p>Manage daily attendance for drivers.</p>
+    <a class="btn" href="{{ url_for('drivers_attendance') }}">Open Driver Attendance</a>
+  </article>
+
+  <article class="panel glass">
+    <h3>Driver Reports</h3>
+    <p>View driver performance, overtime, and punctuality.</p>
+    <a class="btn" href="{{ url_for('driver_reports') }}">Open Driver Reports</a>
+  </article>
+
+  <article class="panel glass">
+    <h3>Employee Reports</h3>
+    <p>Review employee attendance summaries and trends.</p>
+    <a class="btn" href="{{ url_for('reports') }}">Open Employee Reports</a>
+  </article>
+</section>
+{% endblock %}

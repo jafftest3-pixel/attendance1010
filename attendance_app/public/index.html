@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Attendance System</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://unpkg.com/dexie@4.0.8/dist/dexie.min.js"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+  <script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
+</head>
+<body>
+  <div class="bg-aurora"></div>
+  <div class="app-shell">
+    <aside class="sidebar glass">
+      <div class="brand">
+        <img src="logo.png" alt="" class="logo" width="62" height="62" onerror="this.style.display='none'">
+        <div class="brand-text">
+          <h1>Attendance</h1>
+          <p>Management System</p>
+        </div>
+      </div>
+      <nav class="sidebar-nav">
+        <a class="nav-item active" href="#shifts"><span class="nav-icon">🕘</span><span class="nav-label">Employee Shift</span></a>
+        <a class="nav-item" href="#attendance"><span class="nav-icon">✅</span><span class="nav-label">Attendance</span></a>
+        <a class="nav-item" href="#riders-shifts"><span class="nav-icon">🛵</span><span class="nav-label">Riders Shifts</span></a>
+        <a class="nav-item" href="#drivers-attendance"><span class="nav-icon">🚚</span><span class="nav-label">Driver Attendance</span></a>
+        <a class="nav-item" href="#driver-reports"><span class="nav-icon">📈</span><span class="nav-label">Driver Reports</span></a>
+        <a class="nav-item" href="#reports"><span class="nav-icon">📊</span><span class="nav-label">Employee Reports</span></a>
+      </nav>
+    </aside>
+
+    <main>
+      <div data-view="shifts" style="display:none">
+        <section class="panel glow-panel">
+          <h2>Upload Employee Shift</h2>
+          <p class="helper">Accepted columns: employee_name, date, shift_start, shift_end (CSV/XLSX)</p>
+          <p class="helper">Google Sheet: <strong id="emp-shift-url">Not set</strong></p>
+          <p class="helper">Sheet tab: <strong id="emp-shift-tab">Employee Shift</strong></p>
+          <p class="helper">Status: <span id="emp-shift-status" class="status-badge status-idle">Not Synced</span></p>
+          <p class="helper">Last sync: <strong id="emp-shift-sync">Never</strong></p>
+          <form id="form-shift-sheet" class="upload-form">
+            <input type="url" id="linked_employee_sheet_url" placeholder="Google Sheet URL" required>
+            <input type="text" id="linked_employee_sheet_tab" placeholder="Tab name" value="Employee Shift" required>
+            <button type="submit" class="btn-primary">Save Google Sheet Link</button>
+          </form>
+          <form id="form-shift-upload" class="upload-form">
+            <input class="file-input" type="file" id="shift-file" accept=".csv,.xlsx,.xls" required>
+            <button type="submit" class="btn-primary">Upload Employee Shift</button>
+          </form>
+          <div class="danger-form"><button type="button" class="btn-primary" id="btn-shift-sync">Sync Linked Sheet Now</button></div>
+          <div class="danger-form"><button type="button" class="btn-danger" id="btn-shift-clear">Clear All Employee Shifts</button></div>
+        </section>
+        <section class="panel">
+          <h2>Saved Employee Shifts</h2>
+          <table id="shifts-table">
+            <thead><tr><th>Employee</th><th>Date</th><th>Start</th><th>End</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </section>
+      </div>
+
+      <div data-view="attendance" style="display:none">
+        <section class="panel">
+          <h2>Add Attendance</h2>
+          <div id="att-notice" class="notice" style="display:none"></div>
+          <form id="form-att" class="form-grid">
+            <select id="att-employee" class="select-control" required>
+              <option value="">Select employee</option>
+            </select>
+            <input type="date" id="att-date" required>
+            <input type="time" id="att-in" required>
+            <input type="time" id="att-out" required>
+            <button type="submit" class="btn-primary">Save Attendance</button>
+          </form>
+        </section>
+        <section class="panel glow-panel">
+          <h2>Upload Attendance File</h2>
+          <p class="helper">Accepted columns: employee_name, date, check_in, check_out (CSV/XLSX)</p>
+          <p class="helper">Sheet tab: <strong id="emp-att-tab">eMPLOYEE aTEENDANCE</strong>
+            <span id="emp-att-status" class="status-badge status-idle">Not Synced</span></p>
+          <p class="helper">Last sync: <strong id="emp-att-sync">Never</strong></p>
+          <form id="form-att-sheet" class="upload-form">
+            <input type="url" id="linked_emp_att_url" placeholder="Google Sheet URL" required>
+            <input type="text" id="linked_emp_att_tab" placeholder="Tab name" value="eMPLOYEE aTEENDANCE" required>
+            <button type="submit" class="btn-primary">Save Google Sheet Link</button>
+          </form>
+          <div class="danger-form"><button type="button" class="btn-primary" id="btn-att-sync">Sync Linked Employee Attendance</button></div>
+          <form id="form-att-upload" class="upload-form">
+            <input class="file-input" type="file" id="att-file" accept=".csv,.xlsx,.xls" required>
+            <button type="submit" class="btn-primary">Upload and Import</button>
+          </form>
+          <div class="danger-form"><button type="button" class="btn-danger" id="btn-att-clear">Clear All Attendance</button></div>
+        </section>
+        <section class="panel">
+          <h2>Attendance Log</h2>
+          <table id="attendance-table">
+            <thead><tr><th>Employee</th><th>Date</th><th>Check In</th><th>Check Out</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </section>
+      </div>
+
+      <div data-view="riders-shifts" style="display:none">
+        <section class="panel">
+          <h2>Add Rider Shift</h2>
+          <div id="rider-notice" class="notice" style="display:none"></div>
+          <form id="form-rider" class="form-grid">
+            <input type="date" id="rider-date" required>
+            <input type="text" id="rider-window" placeholder="Shift window" required>
+            <input type="text" id="rider-zone" placeholder="Zone code" required>
+            <input type="text" id="rider-area" placeholder="Area name" required>
+            <input type="text" id="rider-driver" placeholder="Driver name" required>
+            <input type="text" id="rider-type" placeholder="Assignment type" required>
+            <button type="submit" class="btn-primary">Save Rider Shift</button>
+          </form>
+        </section>
+        <section class="panel glow-panel">
+          <h2>Upload Rider Shifts</h2>
+          <p class="helper">Columns: date, shift_window, zone_code, area_name, driver_name, assignment_type</p>
+          <p class="helper">Status: <span id="rider-status" class="status-badge status-idle">Not Synced</span></p>
+          <p class="helper">Last sync: <strong id="rider-sync-time">Never</strong></p>
+          <form id="form-rider-sheet" class="upload-form">
+            <input type="url" id="linked_rider_url" placeholder="Google Sheet URL" required>
+            <button type="submit" class="btn-primary">Save Google Sheet Link</button>
+          </form>
+          <form id="form-rider-upload" class="upload-form">
+            <input class="file-input" type="file" id="rider-file" accept=".csv,.xlsx,.xls" required>
+            <button type="submit" class="btn-primary">Upload</button>
+          </form>
+          <div class="danger-form"><button type="button" class="btn-primary" id="btn-rider-sync">Sync Linked Sheet Now</button></div>
+          <div class="danger-form"><button type="button" class="btn-danger" id="btn-rider-clear">Clear All Rider Shifts</button></div>
+        </section>
+        <section class="panel">
+          <h2>Riders Shifts Log</h2>
+          <table id="riders-table">
+            <thead><tr><th>Date</th><th>Shift</th><th>Zone</th><th>Area</th><th>Driver</th><th>Type</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </section>
+      </div>
+
+      <div data-view="drivers-attendance" style="display:none">
+        <section class="panel">
+          <h2>Add Driver Attendance</h2>
+          <div id="drv-notice" class="notice" style="display:none"></div>
+          <form id="form-drv-att" class="form-grid">
+            <select id="drv-employee" class="select-control" required>
+              <option value="">Select driver</option>
+            </select>
+            <input type="date" id="drv-date" required>
+            <input type="time" id="drv-in" required>
+            <input type="time" id="drv-out" required>
+            <button type="submit" class="btn-primary">Save Driver Attendance</button>
+          </form>
+        </section>
+        <section class="panel glow-panel">
+          <h2>Upload Driver Attendance</h2>
+          <p class="helper">Columns: driver_name, date, check_in, check_out</p>
+          <p class="helper">Tab: <strong id="drv-att-tab">Driver aTTENDANCE</strong>
+            <span id="drv-att-status" class="status-badge status-idle">Not Synced</span></p>
+          <p class="helper">Last sync: <strong id="drv-att-sync">Never</strong></p>
+          <form id="form-drv-sheet" class="upload-form">
+            <input type="url" id="linked_drv_att_url" placeholder="Google Sheet URL" required>
+            <input type="text" id="linked_drv_att_tab" placeholder="Tab name" value="Driver aTTENDANCE" required>
+            <button type="submit" class="btn-primary">Save Google Sheet Link</button>
+          </form>
+          <div class="danger-form"><button type="button" class="btn-primary" id="btn-drv-sync">Sync Linked Driver Attendance</button></div>
+          <form id="form-drv-upload" class="upload-form">
+            <input class="file-input" type="file" id="drv-file" accept=".csv,.xlsx,.xls" required>
+            <button type="submit" class="btn-primary">Upload</button>
+          </form>
+          <div class="danger-form"><button type="button" class="btn-danger" id="btn-drv-clear">Clear All Driver Attendance</button></div>
+        </section>
+        <section class="panel">
+          <h2>Driver Attendance Log</h2>
+          <table id="drivers-att-table">
+            <thead><tr><th>Driver</th><th>Date</th><th>In</th><th>Out</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </section>
+      </div>
+
+      <div data-view="reports" style="display:none">
+        <section class="panel">
+          <h2>Report Filters</h2>
+          <form id="form-er-filter" class="filter-grid">
+            <div class="field">
+              <label>Period</label>
+              <select id="er-period" class="select-control">
+                <option value="all">All</option>
+                <option value="day">Per Day</option>
+                <option value="week">Per Week</option>
+                <option value="month">Per Month</option>
+                <option value="custom">Custom Range</option>
+              </select>
+            </div>
+            <div class="field"><label>Start</label><input type="date" id="er-start"></div>
+            <div class="field"><label>End</label><input type="date" id="er-end"></div>
+            <div class="field" style="align-self:end"><label>&nbsp;</label><button type="submit">Apply</button></div>
+          </form>
+        </section>
+        <section class="stats-grid">
+          <article class="stat-card glass"><h3>Total Employees</h3><p id="er-stat-emp">0</p></article>
+          <article class="stat-card glass"><h3>Records</h3><p id="er-stat-att">0</p></article>
+          <article class="stat-card glass late"><h3>Late</h3><p id="er-stat-late">0</p></article>
+          <article class="stat-card glass ontime"><h3>On time</h3><p id="er-stat-ontime">0</p></article>
+        </section>
+        <section class="panel">
+          <h2>Summary</h2>
+          <button type="button" class="button" id="btn-er-export">Export Excel</button>
+          <table id="er-summary"><thead><tr><th>Employee</th><th>Total Hours</th></tr></thead><tbody></tbody></table>
+        </section>
+        <section class="panel">
+          <h2>Detailed</h2>
+          <table id="er-detail">
+            <thead><tr><th>Employee</th><th>Date</th><th>In</th><th>Out</th><th>Shift S</th><th>Shift E</th><th>Hours</th><th>OT</th><th>Status</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </section>
+      </div>
+
+      <div data-view="driver-reports" style="display:none">
+        <section class="panel">
+          <h2>Driver Report Filters</h2>
+          <form id="form-dr-filter" class="filter-grid">
+            <div class="field">
+              <label>Period</label>
+              <select id="dr-period" class="select-control">
+                <option value="all">All</option>
+                <option value="day">Per Day</option>
+                <option value="week">Per Week</option>
+                <option value="month">Per Month</option>
+                <option value="custom">Custom Range</option>
+              </select>
+            </div>
+            <div class="field"><label>Start</label><input type="date" id="dr-start"></div>
+            <div class="field"><label>End</label><input type="date" id="dr-end"></div>
+            <div class="field" style="align-self:end"><label>&nbsp;</label><button type="submit">Apply</button></div>
+          </form>
+        </section>
+        <section class="stats-grid">
+          <article class="stat-card glass"><h3>Drivers</h3><p id="dr-stat-drv">0</p></article>
+          <article class="stat-card glass"><h3>Records</h3><p id="dr-stat-att">0</p></article>
+          <article class="stat-card glass late"><h3>Late</h3><p id="dr-stat-late">0</p></article>
+          <article class="stat-card glass ontime"><h3>On time</h3><p id="dr-stat-ontime">0</p></article>
+        </section>
+        <section class="panel">
+          <h2>Driver Summary</h2>
+          <button type="button" class="button" id="btn-dr-export">Export Excel</button>
+          <table id="dr-summary"><thead><tr><th>Driver</th><th>Hours</th><th>Overtime</th></tr></thead><tbody></tbody></table>
+        </section>
+        <section class="panel">
+          <h2>Detailed</h2>
+          <table id="dr-detail">
+            <thead><tr><th>Driver</th><th>Date</th><th>In</th><th>Out</th><th>Shift S</th><th>Shift E</th><th>Hours</th><th>OT</th><th>Status</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </section>
+      </div>
+    </main>
+  </div>
+  <script src="js/storage.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
